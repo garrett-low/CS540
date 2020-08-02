@@ -1,0 +1,6 @@
+
+p1_regression/.idea/
+p1_regression/out/
+p1_regression/src/mnist_test.csv
+p1_regression/src/mnist_train.csv
+p1_regression/src/test_grlow.txt
