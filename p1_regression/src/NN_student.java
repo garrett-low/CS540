@@ -83,8 +83,8 @@ public class NN_student {
         return 1.0 / (1.0 + Math.exp(-1 * (weight + bias)));
     }
 
-    public static double diff_sigmoid(double weight, double bias) {
-        return sigmoid(weight, bias) * (1 - sigmoid(weight, bias));
+    public static double diff_sigmoid(double weight) {
+        return sigmoid(weight, 0) * (1 - sigmoid(weight, 0));
     }
 
     public static double relu(double x) {
@@ -122,10 +122,10 @@ public class NN_student {
             }
 
             for (int i = 0; i < 392; i++) {
-                wih[i][784] = rng.nextDouble();
+//                wih[i][784] = rng.nextDouble();
             }
 
-            who[392] = rng.nextDouble();
+//            who[392] = rng.nextDouble();
 
             for (int epoch = 1; epoch <= MAX_EPOCHS; epoch++) {
                 double[] out_o = new double[num_train];
@@ -134,7 +134,9 @@ public class NN_student {
                 for (int ind = 0; ind < num_train; ind++) {
                     double[] row = train[ind];
                     double label = row[0];
-
+                    for(int i = 0; i < num_train; ++ i) {
+                        out_h[i][392] = 1.0;
+                    }
 
                     //calc out_h[ind, :-1]
                     for (int i = 0; i < 392; i++) {
@@ -143,22 +145,22 @@ public class NN_student {
                             s += wih[i][j] * row[j + 1];
                         }
 //                    out_h[ind][i] = relu(s);
-                        out_h[ind][i] = sigmoid(s, wih[i][784]);
+                        out_h[ind][i] = sigmoid(s, out_h[i][392]);
                     }
 
                     //calc out_o[ind]
                     double s = 0.0;
                     out_o[392] = rng.nextDouble();
-                    for (int i = 0; i < 392; i++) {
+                    for (int i = 0; i < 393; i++) {
                         s += out_h[ind][i] * who[i];
                     }
 //                out_o[ind] = 1.0 / (1.0 + Math.exp(-s));
-                    out_o[ind] = sigmoid(s, who[392]);
+                    out_o[ind] = sigmoid(s, out_o[392]);
 
                     //calc delta
                     double[] delta = new double[393];
-                    for (int i = 0; i < 392; i++) {
-                        delta[i] = diff_sigmoid(out_h[ind][i], wih[i][784]) * who[i] * (label - out_o[ind]);
+                    for (int i = 0; i < 393; i++) {
+                        delta[i] = diff_sigmoid(out_h[ind][i]) * who[i] * (label - out_o[ind]);
                     }
 
                     //update wih
@@ -168,19 +170,9 @@ public class NN_student {
                         }
                     }
 
-                    // update bias_hidden layer
-                    for (int i = 0; i < 392; i++) {
-                        wih[i][784] = learning_rate * delta[i];
-                    }
-
                     //update who
                     for (int i = 0; i < 393; ++i) {
                         who[i] += learning_rate * (label - out_o[ind]) * out_h[ind][i];
-                    }
-
-                    // update bias output layer
-                    for (int i = 0; i < 392; i++) {
-                        who[392] =  learning_rate * (label - out_o[ind]);
                     }
 
                 }
@@ -220,7 +212,7 @@ public class NN_student {
                         s += row[i] * wih[i][j];
                     }
 
-                    test_act_ih[testIndex][i] = sigmoid(s, wih[i][784]);
+                    test_act_ih[testIndex][i] = s + wih[testIndex][784];
                 }
 
                 double s = 0.0;
@@ -242,7 +234,7 @@ public class NN_student {
 
     private static void printTestSet(FileWriter writer, double[] test_act_ho, double[][] test) throws IOException {
         DecimalFormat df = new DecimalFormat("0.0000");
-        writer.write("Test set, second layer activation values\n");
+        writer.write("\nTest set, second layer activation values\n");
 
         for (int i = 0; i < test_act_ho.length; i++) {
             writer.write(df.format(test_act_ho[i]));
@@ -255,7 +247,7 @@ public class NN_student {
         }
 
         DecimalFormat rounded = new DecimalFormat("0");
-        writer.write("Test set, predicted values:\n");
+        writer.write("\nTest set, predicted values:\n");
         for (int i = 0; i < test_act_ho.length; i++) {
             writer.write(rounded.format(test_act_ho[i]));
 
@@ -279,7 +271,7 @@ public class NN_student {
 
         // print feature vector of test image closest to 0.5
         DecimalFormat twoPlaces = new DecimalFormat("0.00");
-        writer.write("Feature vector of test image closest to 0.5: \n");
+        writer.write("\nFeature vector of test image closest to 0.5: \n");
 
         for (int i = 0; i < test[minIndex].length; i++) {
             writer.write(twoPlaces.format(test[minIndex][i]));
@@ -295,7 +287,7 @@ public class NN_student {
     private static void printWeights(FileWriter writer, double[][] wih, double[] who) throws IOException {
         DecimalFormat df = new DecimalFormat("0.0000");
 
-        writer.write("First layer, 784x392 weights, 1x392 bias:\n");
+        writer.write("\nFirst layer, 784x392 weights, 1x392 bias:\n");
         for (int i = 0; i < 785; i++) {
             for (int j = 0; j < 392; j++) {
                 writer.write(df.format(wih[j][i]));
@@ -307,7 +299,19 @@ public class NN_student {
             }
         }
 
-        writer.write("Second layer, 392 weights, 1 bias:\n");
+        writer.write("\nFirst layer, 784x392 weights, 1x392 bias:\n");
+        for (int i = 0; i < 392; i++) {
+            for (int j = 0; j < 785; j++) {
+                writer.write(df.format(wih[i][j]));
+                if (j < 785 - 1) {
+                    writer.write(",");
+                } else {
+                    writer.write("\n");
+                }
+            }
+        }
+
+        writer.write("\nSecond layer, 392 weights, 1 bias:\n");
         for (int i = 0; i < who.length; i++) {
             writer.write(df.format(who[i]));
             if (i < who.length - 1) {
