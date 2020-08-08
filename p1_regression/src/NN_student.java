@@ -15,7 +15,7 @@ public class NN_student {
     private static final String PATH_TO_TEST = "./src/mnist_test.csv";
     private static final String NEW_TEST = "./src/test_grlow.txt";
     private static final String outputPath = "./src/output.txt";
-    private static final int MAX_EPOCHS = 10;
+    private static final int MAX_EPOCHS = 5;
     static double learning_rate = 0.1;
 
     static double[][] wih = new double[392][785];
@@ -79,12 +79,12 @@ public class NN_student {
 
     }
 
-    public static double sigmoid(double weight, double bias) {
-        return 1.0 / (1.0 + Math.exp(-1 * (weight + bias)));
+    public static double sigmoid(double sum, double bias) {
+        return 1.0 / (1.0 + Math.exp(-1 * (sum + bias)));
     }
 
-    public static double diff_sigmoid(double weight) {
-        return sigmoid(weight, 0) * (1 - sigmoid(weight, 0));
+    public static double diff_sigmoid(double activation) {
+        return activation * (1 - activation);
     }
 
     public static double relu(double x) {
@@ -208,11 +208,11 @@ public class NN_student {
 
                 for (int i = 0; i < 392; ++i) {
                     double s = 0.0;
-                    for (int j = 0; j < 200; ++j) {
-                        s += row[i] * wih[i][j];
+                    for (int j = 0; j < 784; ++j) {
+                        s += row[j] * wih[i][j];
                     }
 
-                    test_act_ih[testIndex][i] = s + wih[testIndex][784];
+                    test_act_ih[testIndex][i] = sigmoid(s, wih[i][784]);
                 }
 
                 double s = 0.0;
