@@ -1,0 +1,4 @@
+Q1 - benign, malignant: 444,239
+Q2 - entropy at root before split: 0.9340
+Q3 - stump positive and negative counts (above-benign, below-benign, above-malignant, below-malignant): [431, 13, 132, 107]
+Q4 - information gain: 0.1994

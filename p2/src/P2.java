@@ -1,25 +1,58 @@
-import java.io.File;
-import java.io.FileNotFoundException;
+import java.io.*;
+import java.text.DecimalFormat;
 import java.util.*;
 
 public class P2 {
 
     // This code uses all 9 features to train the decision tree
     public static int numAttr = 9;
+    private static final String outputPath = "./output.txt";
+    private static final DecimalFormat fourPlaces = new DecimalFormat("0.0000");
 
     public static void main(String[] args) {
+        createFile(outputPath);
 
-        List<ArrayList<Integer>> trainData = cleanAndTransformData("breast-cancer-wisconsin.data");
+        try (FileWriter writer = new FileWriter(outputPath)) {
+            // Import training set
+            List<ArrayList<Integer>> trainData = cleanAndTransformData("./breast-cancer-wisconsin.data");
 
-        DecTreeNode root = buildTree(trainData);
-        printTree(root);
+            // Q1 - count imported data
+            q1ImportDataCheck(trainData, writer);
 
-        // TODO: need to implement method for choosing specific features out of all features of train dataset
-        // i.e.features that are generated using your student id
-        // TODO: need to implement method for printing the tree in the correct format
-        // TODO: need to implement method for classifying test data given the root of the decision tree
-        // TODO: need to implement method for finding maximum depth of the tree
-        // TODO: need to implement method for pruning the tree to have a fixed maximum depth
+            // Q2 - entropy at root
+            q2EntropyAtRoot(trainData, writer);
+
+            // Q3 - decision stump
+            q3Stump(trainData, 8, writer);
+
+            // Build training tree
+            DecTreeNode root = buildTree(trainData);
+            printTree(root);
+            printSideways(root, "");
+
+            // TODO: need to implement method for choosing specific features out of all features of train dataset
+            // i.e.features that are generated using your student id
+            // TODO: need to implement method for classifying test data given the root of the decision tree
+            // TODO: need to implement method for finding maximum depth of the tree
+            // TODO: need to implement method for pruning the tree to have a fixed maximum depth
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private static void q1ImportDataCheck(List<ArrayList<Integer>> trainData, FileWriter writer) throws IOException {
+        int benignCount = 0;
+        int malignantCount = 0;
+        for (ArrayList<Integer> patientData : trainData) {
+            Integer classLabel = patientData.get(9);
+            if (classLabel == 2) {
+                benignCount++;
+            } else {
+                malignantCount++;
+            }
+        }
+        writer.write("Q1 - benign, malignant: " + benignCount + "," + malignantCount + "\n");
+        System.out.println("Q1 - benign, malignant: " + benignCount + "," + malignantCount);
     }
 
     /*
@@ -114,7 +147,7 @@ public class P2 {
     private static DecTreeNode buildTree(List<ArrayList<Integer>> dataSet) {
         int numData = dataSet.size();
         int bestAttr = -1;
-        int bestThres = Integer.MIN_VALUE;
+        int bestThreshold = Integer.MIN_VALUE;
         double bestScore = Double.NEGATIVE_INFINITY;
         boolean leaf = false;
         DecTreeNode node = null;
@@ -127,7 +160,7 @@ public class P2 {
                     if (score > bestScore) {
                         bestScore = score;
                         bestAttr = j;
-                        bestThres = i;
+                        bestThreshold = i;
                     }
                 }
             }
@@ -139,7 +172,7 @@ public class P2 {
             List<ArrayList<Integer>> leftList = new ArrayList<ArrayList<Integer>>();
             List<ArrayList<Integer>> rightList = new ArrayList<ArrayList<Integer>>();
             for (ArrayList<Integer> data : dataSet) {
-                if (data.get(bestAttr) <= bestThres) {
+                if (data.get(bestAttr) <= bestThreshold) {
                     leftList.add(data);
                 } else {
                     rightList.add(data);
@@ -151,7 +184,7 @@ public class P2 {
             }
             // if node is not leaf, create left and right children
             if (!leaf) {
-                node = new DecTreeNode(-1, bestAttr, bestThres);
+                node = new DecTreeNode(-1, bestAttr, bestThreshold);
                 node.left = buildTree(leftList);
                 node.right = buildTree(rightList);
             }
@@ -173,11 +206,114 @@ public class P2 {
         return node;
     }
 
+    private static void q2EntropyAtRoot(List<ArrayList<Integer>> trainData, FileWriter writer) throws IOException {
+        int dataSize = trainData.size();
+        // first computing H(Y)
+        int count = 0;
+        for (List<Integer> data : trainData) {
+            if (data.get(data.size() - 1) == 2) { // if label equals 2, last column is label
+                count++;
+            }
+        }
+        double Hy = entropy((double) count / dataSize);
+        writer.write("Q2 - entropy at root before split: " + fourPlaces.format(Hy) + "\n");
+        System.out.println("Q2 - entropy at root before split: " + fourPlaces.format(Hy));
+    }
+
+    /*
+     * Method for building a decision tree using the given dataset.
+     * It returns a pointer to the root node.
+     */
+    private static void q3Stump(List<ArrayList<Integer>> dataSet, int featureStump, FileWriter writer) throws IOException {
+        int numData = dataSet.size();
+        int bestThreshold = Integer.MIN_VALUE;
+        double bestScore = Double.NEGATIVE_INFINITY;
+        DecTreeNode node = null;
+
+        for (int i = 1; i < 11; i++) {
+            double score = informationGain(dataSet, featureStump, i);
+            if (score > bestScore) {
+                bestScore = score;
+                bestThreshold = i;
+            }
+        }
+
+        // split the entire # of instances into two groups based on the threshold value (<= and >)
+        List<ArrayList<Integer>> leftList = new ArrayList<ArrayList<Integer>>();
+        List<ArrayList<Integer>> rightList = new ArrayList<ArrayList<Integer>>();
+        for (ArrayList<Integer> data : dataSet) {
+            if (data.get(featureStump) <= bestThreshold) {
+                leftList.add(data);
+            } else {
+                rightList.add(data);
+            }
+        }
+
+        int leftBenignCount = 0, leftMalignantCount = 0;
+        for (ArrayList<Integer> patient : leftList) {
+            if (patient.get(patient.size() - 1) == 2) {
+                leftBenignCount++;
+            } else {
+                leftMalignantCount++;
+            }
+        }
+
+        int rightBenignCount = 0, rightMalignantCount = 0;
+        for (ArrayList<Integer> patient : rightList) {
+            if (patient.get(patient.size() - 1) == 2) {
+                rightBenignCount++;
+            } else {
+                rightMalignantCount++;
+            }
+        }
+
+        int[] q3array = {leftBenignCount, rightBenignCount, leftMalignantCount, rightMalignantCount};
+
+        writer.write("Q3 - stump positive and negative counts (above-benign, below-benign, above-malignant, below-malignant): " + Arrays.toString(q3array) + "\n");
+        System.out.println("Q3 - stump positive and negative counts (above-benign, below-benign, above-malignant, below-malignant): " + Arrays.toString(q3array));
+
+        writer.write("Q4 - information gain: " + fourPlaces.format(bestScore) + "\n");
+        System.out.println("Q4 - information gain: " + fourPlaces.format(bestScore));
+    }
+
+    // TODO: need to implement method for printing the tree in the correct format
     /*
      * Method which given the root of the Decision Tree, prints it
      * in the format specified at the webpage for P2 assignment.
      */
     private static void printTree(DecTreeNode node) {
-        // TODO: implement method for printing the tree in the correct format
+        System.out.println(preOrderTraversal(node));
+    }
+
+    private static String preOrderTraversal(DecTreeNode node) {
+        String preOrderString = "";
+
+        if (node != null) {
+            preOrderString = "if (x" + String.valueOf(node.feature) + String.valueOf(node.threshold) + String.valueOf(node.classLabel) + "," + preOrderTraversal(node.left) + preOrderTraversal(node.right);
+        }
+
+        return preOrderString;
+    }
+
+    private static void printSideways(DecTreeNode current, String indent) {
+        if (current != null) {
+            printSideways(current.right, indent + "    ");
+            System.out.println(indent + "[feat:" + current.feature + ", thresh:" + current.threshold + ", label:" + current.classLabel +"]");
+            printSideways(current.left, indent + "    ");
+        }
+    }
+
+    private static void createFile(String outputPath) {
+        try {
+            File myObj = new File(outputPath);
+            if (myObj.createNewFile()) {
+                System.out.println("File created: " + myObj.getName());
+            } else {
+                System.out.println("File already exists.");
+            }
+        } catch (IOException e) {
+            System.out.println("An error occurred.");
+            e.printStackTrace();
+        }
     }
 }

@@ -1,0 +1,22 @@
+Outputs:
+@id
+grlow
+@answer_1
+444,239
+@answer_2
+0.9340
+@answer_3
+431, 13, 132, 107
+@answer_4
+0.1994
+@tree_full
+
+@answer_6
+
+@label_full
+
+@tree_pruned
+
+@label_pruned
+
+@answer_10
