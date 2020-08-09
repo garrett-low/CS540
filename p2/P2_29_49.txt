@@ -1,8 +1,15 @@
-Q1 - benign, malignant: 444,239
-Q2 - entropy at root before split: 0.9340
-Q3 - stump positive and negative counts (above-benign, below-benign, above-malignant, below-malignant): [426, 18, 45, 194]
-Q4 - information gain: 0.4903
-
+Outputs:
+@id
+grlow
+@answer_1
+444,239
+@answer_2
+0.9340
+@answer_3
+426, 18, 45, 194
+@answer_4
+0.4903
+@tree_full
 if (x4 <= 2)
  if (x7 <= 1) return 2
  else
@@ -85,6 +92,13 @@ else
       else return 2
     else return 4
    else return 4
-Depth of training tree with features: 14
-Labelled patient data:
+@answer_6
+14
+@label_full
 2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,4,2,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4
+@tree_pruned
+
+@label_pruned
+
+@answer_10
+None
