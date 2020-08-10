@@ -10,6 +10,7 @@ public class P2 {
     private static final String trainPath = "./breast-cancer-wisconsin.data";
     private static final String testPath = "./test_set_grlow.txt";
     private static final DecimalFormat fourPlaces = new DecimalFormat("0.0000");
+    private static DecTreeNode rootMaxDepth;
 
     public static void main(String[] args) {
         createFile(outputPath);
@@ -34,6 +35,7 @@ public class P2 {
 
             printTree(rootWithFeature, writer); // Q5 - print the training tree with the given features
 
+            // implement method for finding maximum depth of the tree
             // Q6 - depth of training tree
             int depthRootWithFeature = getDepth(rootWithFeature);
             System.out.println("Depth of training tree with features: " + depthRootWithFeature);
@@ -57,8 +59,28 @@ public class P2 {
             System.out.println();
             writer.write("\n");
 
-            // TODO: need to implement method for finding maximum depth of the tree
             // TODO: need to implement method for pruning the tree to have a fixed maximum depth
+            rootMaxDepth = buildTreeWithFeatureAndDepth(trainData, featureArray, 7, 0);
+            System.out.println("Depth of 'pruned' tree: " + getDepth(rootMaxDepth));
+            writer.write("Depth of 'pruned' tree: " + getDepth(rootMaxDepth) + "\n");
+            printTree(rootMaxDepth, writer);
+            printSideways(rootMaxDepth, "");
+
+            List<ArrayList<Integer>> labelledPrunedTestData = classifyData(rootMaxDepth, testData);
+
+            System.out.println("Pruned and labelled patient data:");
+            writer.write("Pruned and labelled patient data:\n");
+            for (int i = 0; i < labelledPrunedTestData.size(); i++) {
+                System.out.print(labelledPrunedTestData.get(i).get(9));
+                writer.write(String.valueOf(labelledPrunedTestData.get(i).get(9)));
+                if (i < labelledPrunedTestData.size() - 1) {
+                    System.out.print(",");
+                    writer.write(",");
+                }
+            }
+            System.out.println();
+            writer.write("\n");
+
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -311,6 +333,76 @@ public class P2 {
     }
 
     /*
+     * Method for building a decision tree using the given dataset and given features.
+     * It returns a pointer to the root node.
+     */
+    private static DecTreeNode buildTreeWithFeatureAndDepth(List<ArrayList<Integer>> dataSet, int[] featureArray, int depth, int currentDepth) {
+        int numData = dataSet.size();
+        int bestAttr = -1;
+        int bestThreshold = Integer.MIN_VALUE;
+        double bestScore = Double.NEGATIVE_INFINITY;
+        boolean leaf = false;
+        DecTreeNode node = null;
+
+        // if node isn't leaf node, compute the best split for it
+        if (!leaf) {
+            for (int feature : featureArray) {
+                for (int i = 1; i < 11; i++) {
+                    double score = informationGain(dataSet, feature, i);
+                    if (score > bestScore) {
+                        bestScore = score;
+                        bestAttr = feature;
+                        bestThreshold = i;
+                    }
+                }
+            }
+            if (bestScore == 0) {
+                leaf = true;
+            }
+
+            // split the entire # of instances into two groups based on the threshold value (<= and >)
+            List<ArrayList<Integer>> leftList = new ArrayList<>();
+            List<ArrayList<Integer>> rightList = new ArrayList<>();
+            if (currentDepth < depth) {
+                for (ArrayList<Integer> data : dataSet) {
+                    if (data.get(bestAttr) <= bestThreshold) {
+                        leftList.add(data);
+                    } else {
+                        rightList.add(data);
+                    }
+                }
+            }
+
+            if (leftList.size() == 0 || rightList.size() == 0) {
+                leaf = true;
+            }
+            // if node is not leaf, create left and right children
+            if (!leaf && currentDepth < depth) {
+                node = new DecTreeNode(-1, bestAttr, bestThreshold);
+                currentDepth++;
+                node.left = buildTreeWithFeatureAndDepth(leftList, featureArray, 7, currentDepth);
+                node.right = buildTreeWithFeatureAndDepth(rightList, featureArray, 7, currentDepth);
+            }
+        }
+
+        // if node is leaf, need to count # of instances with labels 2 and 4
+        if (leaf) {
+            int count = 0;
+            for (List<Integer> data : dataSet) {
+                if (data.get(data.size() - 1) == 2)
+                    count += 1;
+            }
+
+            if (count >= numData - count) {
+                node = new DecTreeNode(2, -1, -1); // assign label 2 to the leaf node
+            } else {
+                node = new DecTreeNode(4, -1, -1); // assign label 4 to the leaf node
+            }
+        }
+        return node;
+    }
+
+    /*
      * Method for building a decision tree using the given dataset.
      * It returns a pointer to the root node.
      */
@@ -422,6 +514,10 @@ public class P2 {
 
     private static Integer classifyRecursive(DecTreeNode node, ArrayList<Integer> patient) {
         int label = -1;
+
+        if (node == null) {
+            return label;
+        }
 
         if (node.isLeaf()) {
             return node.classLabel;
