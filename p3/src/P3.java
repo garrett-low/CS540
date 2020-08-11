@@ -1,7 +1,6 @@
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.lang.reflect.Array;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -23,9 +22,11 @@ public class P3 {
     private static Map<String, Double> transitionProbability3 = new HashMap<String, Double>(); // P(z|xy)
 
     private static final String outputPath = "./output.txt";
-    private static final DecimalFormat fourPlaces = new DecimalFormat("0.000");
+    private static final String scriptPath = "./silence_of_the_lambs_script.txt";
+    private static final DecimalFormat fourPlaces = new DecimalFormat("0.0000");
     private static long m_countUniqueWords = 0;
     private static Map<String, Double> transitionProbability2Laplace = new HashMap<String, Double>(); // P(y|x)
+    private static Map<String, Double> transitionProbability3Laplace = new HashMap<String, Double>(); // P(z|xy)
 
     public static void main(String[] args) throws IOException {
         createFile(outputPath);
@@ -53,16 +54,18 @@ public class P3 {
             estimateTransitionProbabilities(3, count_trigrams, transitionProbability3);
             // Q2 - print unigram probabilities
             writer.write("Q2 - unigram probabilities:\n");
-            System.out.println("Q2 - unigram probabilities:");
             q2printUnigram(transitionProbability1, fourPlaces, writer);
             // Q3 - print bigram probabilities
             writer.write("Q3 - bigram probabilities:\n");
-            System.out.println("Q3 - bigram probabilities:");
             q3printBigram(transitionProbability2, fourPlaces, writer);
             // Q4 - implement Laplace smoothing, otherwise current code might not work correctly (division by 0)
-            m_countUniqueWords = countUniqueWords(script);
-            estimateLaplace(2, count_bigrams, transitionProbability2Laplace);
-            
+            m_countUniqueWords = q4countUniqueWords(scriptPath);
+            writer.write("Q4 - unique words: " + m_countUniqueWords + "\n");
+            q4estimateLaplace(2, count_bigrams, transitionProbability2Laplace);
+            q4estimateLaplace(3, count_trigrams, transitionProbability3Laplace);
+            writer.write("Q4 - bigram probabilities w/ Laplace:\n");
+            q4roundLaplace(transitionProbability2Laplace);
+            q3printBigram(transitionProbability2Laplace, fourPlaces, writer);
 
             // Step 5 - generate sentences using trigram model, in some cases bigram model is used as well
             System.out.println("================== Generating sentences for each letter ==================");
@@ -106,14 +109,6 @@ public class P3 {
 
             // TODO: need to implement Naive Bayes prediction
         }
-    }
-
-    private static long countUniqueWords(String script) throws IOException {
-        long uniqueWords = Files.lines(Paths.get("script"), Charset.defaultCharset())
-                .flatMap(line -> Arrays.stream(line.split(" ")))
-                .distinct()
-                .count();
-        return uniqueWords;
     }
 
     private static ArrayList<Double> fixRowSum(ArrayList<Double> probabilityArray) {
@@ -176,7 +171,7 @@ public class P3 {
         }
     }
 
-    public static <K, V> void q2printUnigram (Map<K, V> unigram, DecimalFormat df, FileWriter writer) throws IOException {
+    public static <K, V> void q2printUnigram(Map<K, V> unigram, DecimalFormat df, FileWriter writer) throws IOException {
         for (int i = 0; i < alphabet.length; i++) {
             String key = String.valueOf(alphabet[i]);
             writer.write(df.format(unigram.get(key)) + ",");
@@ -184,7 +179,7 @@ public class P3 {
         writer.write("\n");
     }
 
-    public static <K, V> void q3printBigram (Map<K, V> bigram, DecimalFormat df, FileWriter writer) throws IOException {
+    public static <K, V> void q3printBigram(Map<K, V> bigram, DecimalFormat df, FileWriter writer) throws IOException {
         for (int i = 0; i < alphabet.length; i++) {
             for (int j = 0; j < alphabet.length; j++) {
                 String key = "" + alphabet[i] + alphabet[j];
@@ -193,6 +188,60 @@ public class P3 {
             writer.write("\n");
         }
     }
+
+    private static void q4roundLaplace(Map<String, Double> bigram) {
+        for (int i = 0; i < alphabet.length; i++) {
+            Double maxProb = 0.0;
+            Double rowSum = 0.0;
+            String maxKey = "zzzzz";
+            int countRoundedZero = -1;
+            for (int j = 0; j < alphabet.length; j++) {
+                String key = "" + alphabet[i] + alphabet[j];
+                Double prob = Math.round(bigram.get(key) * 10000.0) / 10000.0;
+
+                bigram.put(key, prob);
+                rowSum += prob;
+
+                String strProb = fourPlaces.format(bigram.get(key));
+
+                if (prob > maxProb) {
+                    maxProb = prob;
+                    maxKey = key;
+                }
+
+                if (strProb.equals("0.0000")) {
+                    bigram.put(key, 0.0001);
+                    countRoundedZero++;
+                }
+            }
+
+            bigram.put(maxKey, maxProb + (1 - rowSum));
+        }
+
+    }
+
+    // http://www.java2s.com/Tutorials/Java/Stream_How_to/Stream_File_Folder/Count_unique_word_in_a_file_with_Lambda.htm
+    private static long q4countUniqueWords(String scriptPath) throws IOException {
+        long uniqueWords = Files.lines(Paths.get(scriptPath), Charset.defaultCharset())
+                .flatMap(line -> Arrays.stream(line.split(" ")))
+                .distinct()
+                .count();
+        return uniqueWords;
+    }
+
+//    public static <K, V> void q4printBigram (Map<K, V> bigram, DecimalFormat df, Double places, FileWriter writer) throws IOException {
+//        for (int i = 0; i < alphabet.length; i++) {
+//            for (int j = 0; j < alphabet.length; j++) {
+//                String key = "" + alphabet[i] + alphabet[j];
+//                String probability = df.format(Math.round()bigram.get(key));
+////                if (probability.equals("0.0000")) {
+////                    probability = "0.0001";
+////                }
+//                writer.write(probability + ",");
+//            }
+//            writer.write("\n");
+//        }
+//    }
 
     public static void countNGrams(String script) {
 
@@ -247,7 +296,7 @@ public class P3 {
     }
 
     // edited estimateTransitionProbabilities
-    public static void estimateLaplace(int n, Map<String, Integer> ngram_count, Map<String, Double> trans_prob) {
+    public static void q4estimateLaplace(int n, Map<String, Integer> ngram_count, Map<String, Double> trans_prob) {
 
         double probability;
         for (String key : ngram_count.keySet()) {
@@ -279,12 +328,12 @@ public class P3 {
 
                 double[] cdf;
 
-                if (sb.length() == 1 || transitionProbability2.get(sb.toString().substring(sb.length() - 2, sb.length())) == 0.0) {
+                if (sb.length() == 1 || transitionProbability2Laplace.get(sb.toString().substring(sb.length() - 2, sb.length())) == 0.0) {
                     // for 2nd letter compute CDF using bigram or when can't use trigram model in general
-                    cdf = computeCDF(String.valueOf(sb.toString().charAt(0)), transitionProbability2);
+                    cdf = computeCDF(String.valueOf(sb.toString().charAt(0)), transitionProbability2Laplace);
                 } else {
                     // for the rest of the letters compute CDF using trigram model
-                    cdf = computeCDF(sb.toString().substring(sb.length() - 2, sb.length()), transitionProbability3);
+                    cdf = computeCDF(sb.toString().substring(sb.length() - 2, sb.length()), transitionProbability3Laplace);
                 }
 
                 // generate random uniform variable between 0 and max value of the cdf
