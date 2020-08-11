@@ -59,12 +59,16 @@ public class P3 {
             writer.write("Q3 - bigram probabilities:\n");
             q3printBigram(transitionProbability2, fourPlaces, writer);
             // Q4 - implement Laplace smoothing, otherwise current code might not work correctly (division by 0)
-            m_countUniqueWords = q4countUniqueWords(scriptPath);
-            writer.write("Q4 - unique words: " + m_countUniqueWords + "\n");
+            m_countUniqueWords = q4countUniqueWords(script);
+            writer.write("Q4 - unique words 2: " + m_countUniqueWords + "\n");
+
             q4estimateLaplace(2, count_bigrams, transitionProbability2Laplace);
+            writer.write("Q4 - bigram probabilities w/ Laplace before rounding:\n");
+            q3printBigram(transitionProbability2Laplace, fourPlaces, writer);
+
             q4estimateLaplace(3, count_trigrams, transitionProbability3Laplace);
-            writer.write("Q4 - bigram probabilities w/ Laplace:\n");
             q4roundLaplace(transitionProbability2Laplace);
+            writer.write("Q4 - bigram probabilities w/ Laplace after rounding and normalizing:\n");
             q3printBigram(transitionProbability2Laplace, fourPlaces, writer);
 
             // Step 5 - generate sentences using trigram model, in some cases bigram model is used as well
@@ -108,66 +112,6 @@ public class P3 {
             // TODO: similarly compute posterior probabilities for our script
 
             // TODO: need to implement Naive Bayes prediction
-        }
-    }
-
-    private static ArrayList<Double> fixRowSum(ArrayList<Double> probabilityArray) {
-        Double sumExceptLast = 0.0;
-        for (int i = 0; i < probabilityArray.size(); i++) {
-            if ((i + 1) % 27 == 0) {
-                probabilityArray.set(i, 1 - sumExceptLast);
-                sumExceptLast = 0.0;
-            } else if (i < probabilityArray.size() - 1) {
-                sumExceptLast += probabilityArray.get(i);
-            }
-        }
-
-        return probabilityArray;
-    }
-
-    private static ArrayList<Double> roundDouble(ArrayList<Double> probabilityArray, Double places) {
-        for (int i = 0; i < probabilityArray.size(); i++) {
-            probabilityArray.set(i, (Math.floor(probabilityArray.get(i) * places) / places));
-        }
-        return probabilityArray;
-    }
-
-    private static ArrayList<Double> mapToArray(Map<String, Double> transitionProbability) {
-        ArrayList<Double> probabilityArray = new ArrayList<>();
-        transitionProbability.forEach((k, v) -> probabilityArray.add(v));
-        return probabilityArray;
-    }
-
-    private static void printList(Map<String, Double> transitionProbability, DecimalFormat df, FileWriter writer) throws IOException {
-        ArrayList<Double> probabilityArray = new ArrayList<>();
-        transitionProbability.forEach((k, v) -> probabilityArray.add(v));
-        for (int i = 0; i < probabilityArray.size(); i++) {
-            writer.write(df.format(probabilityArray.get(i)));
-            System.out.print(df.format(probabilityArray.get(i)));
-
-            if ((i + 1) % 27 == 0) {
-                writer.write("\n");
-                System.out.println();
-            } else if (i < probabilityArray.size() - 1) {
-                writer.write(",");
-                System.out.print(",");
-            }
-        }
-    }
-
-    // I forgot how to use generics
-    private static void printArray(ArrayList<Double> probabilityArray, DecimalFormat df, FileWriter writer) throws IOException {
-        for (int i = 0; i < probabilityArray.size(); i++) {
-            writer.write(df.format(probabilityArray.get(i)));
-            System.out.print(df.format(probabilityArray.get(i)));
-
-            if ((i + 1) % 27 == 0) {
-                writer.write("\n");
-                System.out.println();
-            } else if (i < probabilityArray.size() - 1) {
-                writer.write(",");
-                System.out.print(",");
-            }
         }
     }
 
@@ -220,28 +164,12 @@ public class P3 {
 
     }
 
-    // http://www.java2s.com/Tutorials/Java/Stream_How_to/Stream_File_Folder/Count_unique_word_in_a_file_with_Lambda.htm
-    private static long q4countUniqueWords(String scriptPath) throws IOException {
-        long uniqueWords = Files.lines(Paths.get(scriptPath), Charset.defaultCharset())
-                .flatMap(line -> Arrays.stream(line.split(" ")))
+    private static long q4countUniqueWords(String script) throws IOException {
+        long uniqueWords = Arrays.stream(script.split(" "))
                 .distinct()
                 .count();
         return uniqueWords;
     }
-
-//    public static <K, V> void q4printBigram (Map<K, V> bigram, DecimalFormat df, Double places, FileWriter writer) throws IOException {
-//        for (int i = 0; i < alphabet.length; i++) {
-//            for (int j = 0; j < alphabet.length; j++) {
-//                String key = "" + alphabet[i] + alphabet[j];
-//                String probability = df.format(Math.round()bigram.get(key));
-////                if (probability.equals("0.0000")) {
-////                    probability = "0.0001";
-////                }
-//                writer.write(probability + ",");
-//            }
-//            writer.write("\n");
-//        }
-//    }
 
     public static void countNGrams(String script) {
 
@@ -302,7 +230,7 @@ public class P3 {
         for (String key : ngram_count.keySet()) {
             if (n == 1) {
                 // compute P(x)
-                probability = (ngram_count.get(key)) / (double) (lengthScript + m_countUniqueWords);
+                probability = (ngram_count.get(key) + 1) / (double) (lengthScript + m_countUniqueWords);
             } else if (n == 2) {
                 // compute P (y | x)
                 probability = (ngram_count.get(key) + 1) / (double) (count_unigrams.get(String.valueOf(key.charAt(0))) + m_countUniqueWords);
