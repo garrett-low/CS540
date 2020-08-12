@@ -1,10 +1,11 @@
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.text.DateFormat;
 import java.text.DecimalFormat;
+import java.text.SimpleDateFormat;
 import java.util.*;
 
 public class P3 {
@@ -21,20 +22,26 @@ public class P3 {
     private static Map<String, Double> transitionProbability2 = new HashMap<String, Double>(); // P(y|x)
     private static Map<String, Double> transitionProbability3 = new HashMap<String, Double>(); // P(z|xy)
 
-    private static final String outputPath = "./output.txt";
+    private static final Date date = Calendar.getInstance().getTime();
+    private static final DateFormat dateFormat = new SimpleDateFormat("yyyy-mm-dd-hh.mm.ss.SS");
+    private static final String strDate = dateFormat.format(date);
+    private static final String outputPath = "./output-" + strDate + ".txt";
     private static final String scriptPath = "./silence_of_the_lambs_script.txt";
     private static final DecimalFormat fourPlaces = new DecimalFormat("0.0000");
-    private static long m_countUniqueWords = 0;
+    private static final long m_countUniqueWords = 27;
     private static Map<String, Double> transitionProbability2Laplace = new HashMap<String, Double>(); // P(y|x)
     private static Map<String, Double> transitionProbability3Laplace = new HashMap<String, Double>(); // P(z|xy)
+    private static final String generatedScriptPath = "./generated_script.txt";
+    private static final String youngScriptPath = "./script_grlow.txt";
 
     public static void main(String[] args) throws IOException {
         createFile(outputPath);
 
         try (FileWriter writer = new FileWriter(outputPath)) {
             // Step 1 - read a script of the movie from txt file into String object
-            String script = new String(Files.readAllBytes(Paths.get("./silence_of_the_lambs_script.txt")));
-            System.out.println("Finished reading the input file with script. ");
+            String script = new String(Files.readAllBytes(Paths.get(scriptPath)));
+            System.out.println("Finished reading the input file with script: " + scriptPath);
+            writer.write("Finished reading the input file with script: " + scriptPath + "\n");
 
             // Step 2 - processing the script
             // make everything lowercase, remove other chars excepts letter or space with a single space
@@ -59,8 +66,7 @@ public class P3 {
             writer.write("Q3 - bigram probabilities:\n");
             q3printBigram(transitionProbability2, fourPlaces, writer);
             // Q4 - implement Laplace smoothing, otherwise current code might not work correctly (division by 0)
-            m_countUniqueWords = q4countUniqueWords(script);
-            writer.write("Q4 - unique words 2: " + m_countUniqueWords + "\n");
+            writer.write("Q4 - unique words: " + m_countUniqueWords + "\n");
 
             q4estimateLaplace(2, count_bigrams, transitionProbability2Laplace);
             writer.write("Q4 - bigram probabilities w/ Laplace before rounding:\n");
@@ -73,52 +79,122 @@ public class P3 {
 
             // Step 5 - generate sentences using trigram model, in some cases bigram model is used as well
             System.out.println("================== Generating sentences for each letter ==================");
-            generateSentences();
+            writer.write("================== Generating sentences for each letter ==================\n");
+            generateSentences(writer);
             System.out.println("==========================================================================");
+            writer.write("==========================================================================\n");
 
             // Step 6 - compute likelihood prob and posterior probabilities for the script given by Young
-            String scriptYoung = new String(Files.readAllBytes(Paths.get("./script_grlow.txt")));
-
             // process this script as well
-            scriptYoung = scriptYoung.toLowerCase().replaceAll("[^a-z ]", " ").replaceAll(" +", " ");
+            String youngScript = readScript(youngScriptPath);
 
-            Map<String, Integer> count_unigramsScript2 = new HashMap<String, Integer>();
-            int count = 0;
-            for (int i = 0; i < alphabet.length; i++) {
-                count = scriptYoung.length() - scriptYoung.replace(String.valueOf(alphabet[i]), "").length();
-                count_unigramsScript2.put(String.valueOf(alphabet[i]), count);
-            }
+            Map<String, Integer> youngScriptUnigramCount = countUnigram(youngScript);
 
-            Map<String, Double> transitionProbabilityScript2 = new HashMap<String, Double>(); // P(x)
-            double probability;
-            for (String key : count_unigramsScript2.keySet()) {
-                probability = (count_unigramsScript2.get(key)) / (double) (scriptYoung.length());
-                transitionProbabilityScript2.put(key, probability);
-            }
+            Map<String, Double> youngScriptLikelihoodProb = calculateLikelihoodProb(youngScript, youngScriptUnigramCount);
             System.out.println("Likelihood probabilities for the script of Young:");
-            System.out.println(transitionProbabilityScript2);
+            System.out.println(youngScriptLikelihoodProb);
+            writer.write("Q7 - Likelihood probabilities for the script of Young:\n");
+            q2printUnigram(youngScriptLikelihoodProb, fourPlaces, writer);
 
             // computing posterior probabilities for the script of Young
-            Map<String, Double> posteriorProb = new HashMap<String, Double>();
-            double post_prob;
-            for (String key : count_unigramsScript2.keySet()) {
-                post_prob = transitionProbabilityScript2.get(key) / (transitionProbabilityScript2.get(key) +
-                        transitionProbability1.get(key));
-                posteriorProb.put(key, post_prob);
-            }
+            Map<String, Double> youngScriptPostProb = calculatePostProb(youngScriptUnigramCount, youngScriptLikelihoodProb);
             System.out.println("Posterior probabilities for the script of Young:");
-            System.out.println(posteriorProb);
+            System.out.println(youngScriptPostProb);
+            writer.write("Q8 - Posterior probabilities for the script of Young:\n");
+            q2printUnigram(youngScriptPostProb, fourPlaces, writer);
 
             // TODO: similarly compute posterior probabilities for our script
+            String myGenScriptString = readScript(generatedScriptPath);
+            Map<String, Integer> myGenScriptUnigramCount = countUnigram(myGenScriptString);
+            Map<String, Double> myGenScriptLikelihoodProb = calculateLikelihoodProb(myGenScriptString, myGenScriptUnigramCount);
+            Map<String, Double> myGenScriptPostProb = calculatePostProb(myGenScriptUnigramCount, myGenScriptLikelihoodProb);
+            writer.write("Q7B - Likelihood probabilities for my script:\n");
+            q2printUnigram(myGenScriptLikelihoodProb, fourPlaces, writer);
+            writer.write("Q8B - Posterior probabilities for my script:\n");
+            q2printUnigram(myGenScriptPostProb, fourPlaces, writer);
 
             // TODO: need to implement Naive Bayes prediction
+            Map<String, Integer> naiveBayesPrediction = calcNaiveBayesPrediction(myGenScriptPostProb, youngScriptPostProb);
+            writer.write("Q9 - Naive Bayes Prediction:\n");
+            q9PrintNaiveBayes(naiveBayesPrediction, writer);
         }
+    }
+
+    private static void q9PrintNaiveBayes(Map<String, Integer> naiveBayesPrediction, FileWriter writer) throws IOException {
+        for (int i = 1; i < alphabet.length; i++) {
+            String key = String.valueOf(alphabet[i]);
+            writer.write(String.valueOf(naiveBayesPrediction.get(key)));
+            if ((i + 1) % 27 != 0) {
+                writer.write(",");
+            }
+        }
+        writer.write("\n");
+    }
+
+    private static Map<String, Integer> calcNaiveBayesPrediction(Map<String, Double> myGenScriptPostProb, Map<String, Double> youngScriptPostProb) {
+        Map<String, Integer> naiveBayesPredict = new HashMap<>();
+
+        for (int i = 1; i < alphabet.length; i++) {
+            String key = String.valueOf(alphabet[i]);
+            Double youngPostProbForLetter = youngScriptPostProb.get(key);
+            Double myPostProbForLetter = myGenScriptPostProb.get(key);
+            Double youngPostProbLog = Math.log(youngPostProbForLetter);
+            Double myPostProbLog = Math.log(myPostProbForLetter);
+
+            if (myPostProbLog > youngPostProbLog) {
+                naiveBayesPredict.put(key, 0);
+            } else {
+                naiveBayesPredict.put(key, 1);
+            }
+        }
+
+        return  naiveBayesPredict;
+    }
+
+    private static Map<String, Double> calculatePostProb(Map<String, Integer> unigramCount, Map<String, Double> likelihoodProb) {
+        Map<String, Double> youngScriptPostProb = new HashMap<String, Double>();
+        double postProb;
+        for (String key : unigramCount.keySet()) {
+            postProb = likelihoodProb.get(key) / (likelihoodProb.get(key) +
+                    transitionProbability1.get(key));
+            youngScriptPostProb.put(key, postProb);
+        }
+        return youngScriptPostProb;
+    }
+
+    private static Map<String, Double> calculateLikelihoodProb(String scriptString, Map<String, Integer> unigramCount) {
+        Map<String, Double> youngScriptLikelihoodProb = new HashMap<String, Double>(); // P(x)
+        double probability;
+        for (String key : unigramCount.keySet()) {
+            probability = (unigramCount.get(key)) / (double) (scriptString.length());
+            youngScriptLikelihoodProb.put(key, probability);
+        }
+        return youngScriptLikelihoodProb;
+    }
+
+    private static Map<String, Integer> countUnigram(String scriptString) {
+        Map<String, Integer> unigramCount = new HashMap<>();
+        int count = 0;
+        for (int i = 0; i < alphabet.length; i++) {
+            count = scriptString.length() - scriptString.replace(String.valueOf(alphabet[i]), "").length();
+            unigramCount.put(String.valueOf(alphabet[i]), count);
+        }
+        return unigramCount;
+    }
+
+    private static String readScript(String scriptPath) throws IOException {
+        String script = new String(Files.readAllBytes(Paths.get(scriptPath)));
+        script = script.toLowerCase().replaceAll("[^a-z ]", " ").replaceAll(" +", " ");
+        return script;
     }
 
     public static <K, V> void q2printUnigram(Map<K, V> unigram, DecimalFormat df, FileWriter writer) throws IOException {
         for (int i = 0; i < alphabet.length; i++) {
             String key = String.valueOf(alphabet[i]);
-            writer.write(df.format(unigram.get(key)) + ",");
+            writer.write(df.format(unigram.get(key)));
+            if ((i + 1) % 27 != 0) {
+                writer.write(",");
+            }
         }
         writer.write("\n");
     }
@@ -127,7 +203,10 @@ public class P3 {
         for (int i = 0; i < alphabet.length; i++) {
             for (int j = 0; j < alphabet.length; j++) {
                 String key = "" + alphabet[i] + alphabet[j];
-                writer.write(df.format(bigram.get(key)) + ",");
+                writer.write(df.format(bigram.get(key)));
+                if ((j + 1) % 27 != 0) {
+                    writer.write(",");
+                }
             }
             writer.write("\n");
         }
@@ -172,7 +251,6 @@ public class P3 {
     }
 
     public static void countNGrams(String script) {
-
         // count # of occurrences of each char in an alphabet + space character
         int count = 0;
         for (int i = 0; i < alphabet.length; i++) {
@@ -242,8 +320,7 @@ public class P3 {
         }
     }
 
-
-    public static void generateSentences() {
+    public static void generateSentences(FileWriter writer) throws IOException {
 
         // go through each letter, ignore first char which is space
         for (int i = 1; i < alphabet.length; i++) {
@@ -256,13 +333,17 @@ public class P3 {
 
                 double[] cdf;
 
-                if (sb.length() == 1 || transitionProbability2Laplace.get(sb.toString().substring(sb.length() - 2, sb.length())) == 0.0) {
-                    // for 2nd letter compute CDF using bigram or when can't use trigram model in general
-                    cdf = computeCDF(String.valueOf(sb.toString().charAt(0)), transitionProbability2Laplace);
-                } else {
-                    // for the rest of the letters compute CDF using trigram model
-                    cdf = computeCDF(sb.toString().substring(sb.length() - 2, sb.length()), transitionProbability3Laplace);
-                }
+//                if (sb.length() == 1 || transitionProbability2Laplace.get(sb.toString().substring(sb.length() - 2, sb.length())) == 0.0) {
+//                    // for 2nd letter compute CDF using bigram or when can't use trigram model in general
+//                    cdf = computeCDF(String.valueOf(sb.toString().charAt(0)), transitionProbability2Laplace);
+//                } else {
+//                    // for the rest of the letters compute CDF using trigram model
+//                    cdf = computeCDF(sb.toString().substring(sb.length() - 2, sb.length()), transitionProbability3Laplace);
+//                }
+
+                String prevChar = String.valueOf(sb.toString().charAt(sb.length() - 1));
+
+                cdf = computeCDF(prevChar, transitionProbability2);
 
                 // generate random uniform variable between 0 and max value of the cdf
                 Random r = new Random();
@@ -274,6 +355,7 @@ public class P3 {
             }
             // print out the generated sentence
             System.out.println(sb.toString());
+            writer.write(sb.toString() + "\n");
         }
     }
 
