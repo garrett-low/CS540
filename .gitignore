@@ -4,6 +4,8 @@ p1_regression/out/
 p1_regression/src/mnist_test.csv
 p1_regression/src/mnist_train.csv
 p1_regression/src/test_grlow.txt
+p2/out/
+p2/.idea/
 p3/output-2020-38-12-02.38.48.876.txt
 p3/output-2020-32-11-06.32.48.440.txt
 p3/output-2020-21-11-06.21.25.497.txt
@@ -22,3 +24,5 @@ p3/output.txt
 p4/.idea/
 p4/temp/
 p4/out/
+p4/out/production/p4/p4.class
+p2/.idea/inspectionProfiles/Project_Default.xml

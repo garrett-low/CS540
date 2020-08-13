@@ -3,6 +3,7 @@ import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.text.DateFormat;
+import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
 import java.util.*;
 
@@ -17,6 +18,8 @@ public class p4 {
     private static final DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd-HH.mm.ss.SSS");
     private static final String strDate = dateFormat.format(date);
     private static final String outputPath = "./temp/output-" + strDate + ".txt";
+    private static List<Double[]> finalMeans = new ArrayList<>();
+    private static DecimalFormat fourPlaces = new DecimalFormat("0.0000");
 
     public static void main(String[] args) {
         createFile(outputPath);
@@ -61,91 +64,120 @@ public class p4 {
             writer.write("==========================================================================\n");
             q1PrintIntegerArrayFromMap(writer, globalDaysToDouble, sortedAffectedCountries, false);
 
-            // TODO: remove TA stuff
-            List<Double[]> global_data = new ArrayList<>();
-            for (String country : sortedListCountries) {
-                global_data.add(globalData.get(country));
-            }
-
             // Q5 - Hierarchical clustering, single-linkage, euclidean
-            Map<String, Integer> clusterHierarchicalSingle = q5CalcHierarchicalCluster(writer, globalDaysToDouble, sortedAffectedCountries);
+            Map<String, Integer> clusterHierarchicalSingle = q5CalcHierarchicalSingle(writer, globalDaysToDouble, sortedAffectedCountries);
             writer.write("==========================================================================\n");
             writer.write("Q5 - output, hierarchical, single, euclidean, no country label:\n");
             writer.write("==========================================================================\n");
             q5PrintCluster(writer, clusterHierarchicalSingle, sortedAffectedCountries);
 
             // Q6 - Hierarchical clustering, complete linkage, euclidean
-            Map<String, Integer> clusterHierarchicalComplete = q5CalcHierarchicalComplete(writer, globalDaysToDouble, sortedAffectedCountries);
+            Map<String, Integer> clusterHierarchicalComplete = q6CalcHierarchicalComplete(writer, globalDaysToDouble, sortedAffectedCountries);
             writer.write("==========================================================================\n");
             writer.write("Q6 - output, hierarchical, complete, euclidean, no country label:\n");
             writer.write("==========================================================================\n");
             q5PrintCluster(writer, clusterHierarchicalComplete, sortedAffectedCountries);
 
-            // TA - Hierarchical Clustering with single-linkage and Manhattan distance
-            taSolutionHierchicalCluster(globalData, sortedListCountries);
-
-            // K-Means Clustering with Manhattan distance
-            int[] cluster_info = new int[sortedListCountries.size()]; // cluster to which country is assigned to
-
-            // K vectors of length FEATURE_LENGTH, those will hold our cluster centers
-            List<Double[]> means = new ArrayList<Double[]>();
-            // Choose K random countries as our initial means for cluster centers
-            for (int i = 0; i < K; i++) {
-                Random r = new Random();
-                int rand = r.nextInt(sortedListCountries.size());
-                Double[] vector = global_data.get(rand);
-                means.add(vector);
+            // Q7 - K Means clustering, euclidean
+            writer.write("==========================================================================\n");
+            writer.write("Q7 - human-readable K clusters:\n");
+            List<Double[]> globalDaysToDoubleList = new ArrayList<>();
+            for (String country : sortedAffectedCountries) {
+                Integer[] integerList = globalDaysToDouble.get(country);
+                Double[] doubleList = new Double[integerList.length];
+                for (int i = 0; i < integerList.length; i++) {
+                    doubleList[i] = Double.valueOf(integerList[i]);
+                }
+                globalDaysToDoubleList.add(doubleList);
             }
 
-            // find initial cluster assignment for all countries
-            findClusterForCountries(global_data, means, cluster_info);
-
-            // start updating means for clusters until clusters do not change
-            boolean keepUpdatingMeans = true;
-
-            List<Double[]> previous_iteration_means = means;
-
-            while (keepUpdatingMeans) {
-
-                List<Double[]> recomputed_means = recomputeMeans(global_data, cluster_info);
-
-                // need to make sure that all K means are not changing for stopping learning algorithm
-                int checker = 0;
-                for (int cl_index = 0; cl_index < K; cl_index++) {
-
-                    if (Arrays.equals(recomputed_means.get(cl_index), previous_iteration_means.get(cl_index))) {
-                        checker += 1;
-                    }
-                }
-                if (checker == K) {
-                    // all K vectors are still the same after last iteration of updates to the means
-                    // therefore stop the algorithm
-                    keepUpdatingMeans = false;
-                    break;
-                }
-                findClusterForCountries(global_data, recomputed_means, cluster_info);
-                previous_iteration_means = recomputed_means;
-            }
-
-            // Print out list of countries in each cluster for K-Means
-            System.out.println("K-Means Clustering Results: ");
-            for (int i = 1; i < K + 1; i++) {
-                System.out.print(i - 1 + " [");
-                StringBuilder sb = new StringBuilder();
-                for (int j = 0; j < sortedListCountries.size(); j++) {
-                    if (cluster_info[j] == i) {
-                        sb.append(sortedListCountries.get(j) + ", ");
-                    }
-                }
-                if (sb.length() != 0) System.out.print(sb.toString().substring(0, sb.length() - 2));
-                else System.out.print(sb.toString());
-                System.out.print("]");
-                System.out.println();
-            }
+            Map<String, Integer> kClusters = q7KMeans(writer, sortedAffectedCountries, globalDaysToDoubleList);
+            writer.write("==========================================================================\n");
+            writer.write("Q7 - output, K-means, euclidean:\n");
+            writer.write("==========================================================================\n");
+            q5PrintCluster(writer, kClusters, sortedAffectedCountries);
+            writer.write("==========================================================================\n");
+            writer.write("Q8 - output, K-means cluster centers:\n");
+            writer.write("==========================================================================\n");
+            q7PrintClusterCenters(writer, finalMeans);
         } catch (IOException e) {
             e.printStackTrace();
         }
 
+    }
+
+    private static void q7PrintClusterCenters(FileWriter writer, List<Double[]> finalMeans) throws IOException {
+        for (int i = 0; i < finalMeans.size(); i++) {
+            Double[] vector = finalMeans.get(i);
+            for (int j = 0; j < vector.length; j++) {
+                writer.write(fourPlaces.format(vector[j]));
+                if (j < vector.length - 1) {
+                    writer.write(",");
+                }
+            }
+            writer.write("\n");
+        }
+        writer.write("\n");
+    }
+
+    private static void taSolutionKMeans(List<String> sortedListCountries, List<Double[]> global_data) {
+        int[] cluster_info = new int[sortedListCountries.size()]; // cluster to which country is assigned to
+
+        // K vectors of length FEATURE_LENGTH, those will hold our cluster centers
+        List<Double[]> means = new ArrayList<Double[]>();
+        // Choose K random countries as our initial means for cluster centers
+        for (int i = 0; i < K; i++) {
+            Random r = new Random();
+            int rand = r.nextInt(sortedListCountries.size());
+            Double[] vector = global_data.get(rand);
+            means.add(vector);
+        }
+
+        // find initial cluster assignment for all countries
+        findClusterForCountries(global_data, means, cluster_info);
+
+        // start updating means for clusters until clusters do not change
+        boolean keepUpdatingMeans = true;
+
+        List<Double[]> previous_iteration_means = means;
+
+        while (keepUpdatingMeans) {
+
+            List<Double[]> recomputed_means = recomputeMeans(global_data, cluster_info);
+
+            // need to make sure that all K means are not changing for stopping learning algorithm
+            int checker = 0;
+            for (int cl_index = 0; cl_index < K; cl_index++) {
+
+                if (Arrays.equals(recomputed_means.get(cl_index), previous_iteration_means.get(cl_index))) {
+                    checker += 1;
+                }
+            }
+            if (checker == K) {
+                // all K vectors are still the same after last iteration of updates to the means
+                // therefore stop the algorithm
+                keepUpdatingMeans = false;
+                break;
+            }
+            findClusterForCountries(global_data, recomputed_means, cluster_info);
+            previous_iteration_means = recomputed_means;
+        }
+
+        // Print out list of countries in each cluster for K-Means
+        System.out.println("K-Means Clustering Results: ");
+        for (int i = 1; i < K + 1; i++) {
+            System.out.print(i - 1 + " [");
+            StringBuilder sb = new StringBuilder();
+            for (int j = 0; j < sortedListCountries.size(); j++) {
+                if (cluster_info[j] == i) {
+                    sb.append(sortedListCountries.get(j) + ", ");
+                }
+            }
+            if (sb.length() != 0) System.out.print(sb.toString().substring(0, sb.length() - 2));
+            else System.out.print(sb.toString());
+            System.out.print("]");
+            System.out.println();
+        }
     }
 
     private static void q5PrintCluster(FileWriter writer, Map<String, Integer> cluster, List<String> sortedListCountries) throws IOException {
@@ -161,11 +193,11 @@ public class p4 {
         writer.write("\n");
     }
 
-    private static Map<String, Integer> q5CalcHierarchicalCluster(FileWriter writer, Map<String, Integer[]> globalDaysToDouble,
-                                                                  List<String> sortedAffectedCountries) throws IOException {
+    private static Map<String, Integer> q5CalcHierarchicalSingle(FileWriter writer, Map<String, Integer[]> globalDaysToDouble,
+                                                                 List<String> sortedAffectedCountries) throws IOException {
         List<List<String>> clusters = new ArrayList<>();
         HashMap<String, Integer> clusterHier = new HashMap<>();
-
+        writer.write("==========================================================================\n");
         writer.write("Q5 - Hierarchical clustering, single linkage, Euclidean:\n");
 
         // each country appears as a separate cluster at the beginning
@@ -180,9 +212,6 @@ public class p4 {
             double minimumDistance = Double.MAX_VALUE;
             List<String> clusterToMerge1 = null, clusterToMerge2 = null;
             int indexCluster1 = -1, indexCluster2 = -1;
-
-            // variables for complete linkage
-            double maxDistance[] = new double[clusters.size()];
 
             for (int i = 0; i < clusters.size(); i++) {
                 List<String> cluster1 = clusters.get(i);
@@ -226,16 +255,17 @@ public class p4 {
             }
             cluster_num++;
         }
-        writer.write("=============================================================\n");
+        writer.write("==========================================================================\n");
 
         return clusterHier;
     }
 
-    private static Map<String, Integer> q5CalcHierarchicalComplete(FileWriter writer, Map<String, Integer[]> globalDaysToDouble,
+    private static Map<String, Integer> q6CalcHierarchicalComplete(FileWriter writer, Map<String, Integer[]> globalDaysToDouble,
                                                                    List<String> sortedAffectedCountries) throws IOException {
         List<List<String>> clusters = new ArrayList<>();
         HashMap<String, Integer> clusterHier = new HashMap<>();
 
+        writer.write("==========================================================================\n");
         writer.write("Q5 - Hierarchical clustering, single linkage, Euclidean:\n");
 
         // each country appears as a separate cluster at the beginning
@@ -247,23 +277,20 @@ public class p4 {
 
         while (clusters.size() != K) {
 
-            double minimumDistance = Double.MAX_VALUE;
+            double minOfMaxDistance = Double.MAX_VALUE;
             List<String> clusterToMerge1 = null, clusterToMerge2 = null;
             int indexCluster1 = -1, indexCluster2 = -1;
-
-            // variables for complete linkage
-            double maxDistance[] = new double[clusters.size()];
 
             for (int i = 0; i < clusters.size(); i++) {
                 List<String> cluster1 = clusters.get(i);
                 for (int j = i + 1; j < clusters.size(); j++) { // make sure it's not the same cluster though, otherwise dist is 0.
 
                     List<String> cluster2 = clusters.get(j);
-                    // compute single linkage distance between given two clusters
-                    double currDist = q5SingleEuclideanDistance(globalDaysToDouble, cluster1, cluster2);
+                    // compute complete linkage distance between given two clusters
+                    double currDist = q6CompleteEuclideanDistance(globalDaysToDouble, cluster1, cluster2);
 
-                    if (currDist < minimumDistance) {
-                        minimumDistance = currDist;
+                    if (currDist < minOfMaxDistance) {
+                        minOfMaxDistance = currDist;
                         clusterToMerge1 = cluster1;
                         clusterToMerge2 = cluster2;
                         indexCluster1 = i;
@@ -296,21 +323,45 @@ public class p4 {
             }
             cluster_num++;
         }
-        writer.write("=============================================================\n");
+        writer.write("==========================================================================\n");
 
         return clusterHier;
     }
 
+    private static double q6CompleteEuclideanDistance(Map<String, Integer[]> globalData, List<String> cluster1, List<String> cluster2) {
+        double maxDistance = -1.0;
+        double distance;
+        for (int i = 0; i < cluster1.size(); i++) {
+            for (int j = 0; j < cluster2.size(); j++) {
+
+                Integer[] values1 = globalData.get(cluster1.get(i));
+                Integer[] values2 = globalData.get(cluster2.get(j));
+
+                double x1 = values1[0];
+                double y1 = values1[1];
+                double z1 = values1[2];
+
+                double x2 = values2[0];
+                double y2 = values2[1];
+                double z2 = values2[2];
+
+                distance = q5CalcEuclidean(x1, y1, z1, x2, y2, z2);
+
+                if (distance > maxDistance) maxDistance = distance;
+            }
+        }
+        return maxDistance;
+    }
+
     /*
      * This method computes single-linkage distance between two clusters.
-     * Makes use of Manhattan distance.
+     * Makes use of Euclidean distance.
      */
     private static double q5SingleEuclideanDistance(Map<String, Integer[]> globalData, List<String> cluster1, List<String> cluster2) {
         double minDistance = Double.MAX_VALUE;
         double distance;
         for (int i = 0; i < cluster1.size(); i++) {
             for (int j = 0; j < cluster2.size(); j++) {
-
                 Integer[] values1 = globalData.get(cluster1.get(i));
                 Integer[] values2 = globalData.get(cluster2.get(j));
 
@@ -646,6 +697,113 @@ public class p4 {
                     // TODO: change this to Euclidean distance instead of Manhattan
                     distance += Math.abs(countryInfo[j] - mean_vector[j]);
                 }
+
+                if (distance < min_distance) {
+                    min_cluster = k + 1;
+                    min_distance = distance;
+                }
+            }
+            cluster_info[i] = min_cluster;
+        }
+    }
+
+    private static Map<String, Integer> q7KMeans(FileWriter writer, List<String> sortedCountryStringList, List<Double[]> global_data) throws IOException {
+        Map<String, Integer> clusterData = new HashMap<>();
+
+        int[] cluster_info = new int[sortedCountryStringList.size()]; // cluster to which country is assigned to
+
+        // K vectors of length FEATURE_LENGTH, those will hold our cluster centers
+        List<Double[]> means = new ArrayList<>();
+        // Choose K random countries as our initial means for cluster centers
+        for (int i = 0; i < K; i++) {
+            Random r = new Random();
+            int rand = r.nextInt(sortedCountryStringList.size());
+            Double[] vector = global_data.get(rand);
+            means.add(vector);
+        }
+
+        // find initial cluster assignment for all countries
+        q7FindClusterForCountriesEuclidean(global_data, means, cluster_info);
+
+        // start updating means for clusters until clusters do not change
+        boolean keepUpdatingMeans = true;
+
+        List<Double[]> previous_iteration_means = means;
+
+        while (keepUpdatingMeans) {
+
+            List<Double[]> recomputed_means = recomputeMeans(global_data, cluster_info);
+
+            // need to make sure that all K means are not changing for stopping learning algorithm
+            int checker = 0;
+            for (int cl_index = 0; cl_index < K; cl_index++) {
+
+                if (Arrays.equals(recomputed_means.get(cl_index), previous_iteration_means.get(cl_index))) {
+                    checker += 1;
+                }
+            }
+            if (checker == K) {
+                // all K vectors are still the same after last iteration of updates to the means
+                // therefore stop the algorithm
+                keepUpdatingMeans = false;
+                finalMeans = recomputed_means;
+                break;
+            }
+            q7FindClusterForCountriesEuclidean(global_data, recomputed_means, cluster_info);
+            previous_iteration_means = recomputed_means;
+        }
+
+        // Print out list of countries in each cluster for K-Means
+        System.out.println("K-Means Clustering Results: ");
+        for (int i = 1; i < K + 1; i++) {
+            System.out.print(i - 1 + " [");
+            StringBuilder sb = new StringBuilder();
+            for (int j = 0; j < sortedCountryStringList.size(); j++) {
+                if (cluster_info[j] == i) {
+                    sb.append(sortedCountryStringList.get(j) + ", ");
+                }
+            }
+            if (sb.length() != 0) System.out.print(sb.toString().substring(0, sb.length() - 2));
+            else System.out.print(sb.toString());
+            System.out.print("]");
+            System.out.println();
+        }
+
+        for (int i = 0; i < cluster_info.length; i++) {
+            writer.write(sortedCountryStringList.get(i) + ": " + String.valueOf(cluster_info[i] - 1));
+            writer.write("\n");
+        }
+
+        for (int i = 0; i < sortedCountryStringList.size(); i++) {
+            String country = sortedCountryStringList.get(i);
+            int clusterIndex = cluster_info[i] - 1;
+            clusterData.put(country,clusterIndex);
+        }
+
+        return clusterData;
+    }
+
+    private static void q7FindClusterForCountriesEuclidean(List<Double[]> data, List<Double[]> means, int[] cluster_info) {
+
+        for (int i = 0; i < data.size(); i++) {
+            Double[] countryInfo = data.get(i);
+
+            int min_cluster = 0;
+            double min_distance = Double.MAX_VALUE;
+
+            for (int k = 0; k < K; k++) {
+
+                Double[] mean_vector = means.get(k);
+
+                double x1 = countryInfo[0];
+                double y1 = countryInfo[1];
+                double z1 = countryInfo[2];
+
+                double x2 = mean_vector[0];
+                double y2 = mean_vector[1];
+                double z2 = mean_vector[2];
+
+                double distance = q5CalcEuclidean(x1, y1, z1, x2, y2, z2);
 
                 if (distance < min_distance) {
                     min_cluster = k + 1;
