@@ -100,10 +100,37 @@ public class p4 {
             writer.write("Q8 - output, K-means cluster centers:\n");
             writer.write("==========================================================================\n");
             q7PrintClusterCenters(writer, finalMeans);
+
+            double distortion = q9CalcDistortion(kClusters, globalDaysToDouble, finalMeans);
+            writer.write("==========================================================================\n");
+            writer.write("Q9 distortion: " + distortion + "\n");
+            writer.write("==========================================================================\n");
+
         } catch (IOException e) {
             e.printStackTrace();
         }
 
+    }
+
+    private static double q9CalcDistortion(Map<String, Integer> kClusters, Map<String, Integer[]> globalDataMap, List<Double[]> finalMeans) {
+        double distortion = 0;
+
+        for (String country : kClusters.keySet()) {
+            int clusterIndex = kClusters.get(country);
+            Integer[] countryVector = globalDataMap.get(country);
+            Double[] clusterCenterVector = finalMeans.get(clusterIndex);
+            double x1 = countryVector[0];
+            double y1 = countryVector[1];
+            double z1 = countryVector[2];
+
+            double x2 = clusterCenterVector[0];
+            double y2 = clusterCenterVector[1];
+            double z2 = clusterCenterVector[2];
+
+            distortion += (x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2) + (z1 - z2) * (z1 - z2);
+        }
+
+        return distortion;
     }
 
     private static void q7PrintClusterCenters(FileWriter writer, List<Double[]> finalMeans) throws IOException {
@@ -777,7 +804,7 @@ public class p4 {
         for (int i = 0; i < sortedCountryStringList.size(); i++) {
             String country = sortedCountryStringList.get(i);
             int clusterIndex = cluster_info[i] - 1;
-            clusterData.put(country,clusterIndex);
+            clusterData.put(country, clusterIndex);
         }
 
         return clusterData;
