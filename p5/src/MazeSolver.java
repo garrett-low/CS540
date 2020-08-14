@@ -319,8 +319,10 @@ public class MazeSolver {
 //        if (adjacentCell.parent == null) {
 //          adjacentCell.parent = current;
 //        }
-//        int xDiff = adjacentCell.xCoord - adjacentCell.parent.xCoord;
+//        int xDiff = adjacentCell.xCoord - adjacentCell.parent.parentd;
 //        int yDiff = adjacentCell.yCoord - adjacentCell.parent.yCoord;
+//        int xDiff = adjacentCell.xCoord - current.xCoord;
+//        int yDiff = adjacentCell.yCoord - current.yCoord;
 //        int x3Diff = start.xCoord - adjacentCell.xCoord;
 //        int y3Diff = start.yCoord - adjacentCell.yCoord;
 //        double gAdditional =  Math.sqrt(xDiff*xDiff + yDiff*yDiff);
