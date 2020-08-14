@@ -25,5 +25,23 @@ public class Cell {
 	public void setNeighbors(ArrayList<Cell> neighbors) {
 		this.neighbors = neighbors;
 	}
+	
+	@Override
+	public boolean equals(Object obj) {
+		if (obj instanceof Cell) {
+			Cell cell = (Cell) obj;
+			return (this.xCoord == cell.xCoord) && (this.yCoord == cell.yCoord);
+		} else {
+			return  false;
+		}
+	}
+	
+	@Override
+	public int hashCode() {
+		int result = 17;
+		result = 31 * result + this.xCoord;
+		result = 31 * result + this.yCoord;
+		return result;
+	}
 
 }

@@ -413,6 +413,7 @@ public class SVGParser {
         for (Integer[] solutionCoordinates : solutionPath) {
           if (solutionCoordinates[1] == row && solutionCoordinates[0] == col) {
             isSolutionPath = true;
+            break;
           }
         }
         
@@ -437,6 +438,7 @@ public class SVGParser {
         for (Integer[] solutionCoordinates : solutionPath) {
           if (solutionCoordinates[1] == row && solutionCoordinates[0] == col) {
             isSolutionPath = true;
+            break;
           }
         }
         
@@ -469,6 +471,7 @@ public class SVGParser {
           for (Integer[] solutionCoordinates : solutionPath) {
             if (solutionCoordinates[1] == row && solutionCoordinates[0] == col) {
               isSolutionPath = true;
+              break;
             }
           }
           
@@ -487,6 +490,19 @@ public class SVGParser {
           }
         }
       }
+    }
+  }
+  
+  public void printManhattanToFinish(FileWriter writer, Cell finish) throws IOException {
+    for (int row = 0; row < mazeHeight; row++) {
+      for (int col = 0; col < mazeWidth; col++) {
+        int manhattanDistance = Math.abs(col - finish.xCoord) + Math.abs(row - finish.yCoord);
+        writer.write(String.valueOf(manhattanDistance));
+        if (col != mazeWidth - 1) {
+          writer.write(",");
+        }
+      }
+      writer.write("\n");
     }
   }
 }

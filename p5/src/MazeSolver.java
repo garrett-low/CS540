@@ -40,6 +40,11 @@ public class MazeSolver {
   private static final String q2SuccOutputPath = "./temp/q2-succ-" + strDate + ".txt";
   private static final String q3SolutionOutputPath = "./temp/q3-solution-" + strDate + ".txt";
   private static final String q4PlotSolutionOutputPath = "./temp/q4-plot_solution-" + strDate + ".txt";
+  private static final String q5BfsOutputPath = "./temp/q5-bfs-" + strDate + ".txt";
+  private static final String q6BfsOutputPath = "./temp/q6-dfs-" + strDate + ".txt";
+  private static final String q7ManhattanDistancesOutputPath = "./temp/q7-distances-" + strDate + ".txt";
+  private static final String q8AStarManhattanOutputPath = "./temp/q8-a_manhattan-" + strDate + ".txt";
+  private static final String q9AStarEuclideanOutputPath = "./temp/q9-a_euclidean-" + strDate + ".txt";
   
   public static void main(String[] args) throws ParserConfigurationException, SAXException, IOException {
     createFile(q1PlotOutputPath);
@@ -64,22 +69,61 @@ public class MazeSolver {
       svgParser.printToFileSuccessorMatrix(writer);
     }
     
-    System.out.println("\nStarted running BFS Algorithm !");
+    System.out.println("\nStarted running BFS Algorithm!");
+    HashSet<Cell> bfsVisitedSet = BFS(start, finish);
+    try (FileWriter writer = new FileWriter(q5BfsOutputPath)) {
+      printToFileVisited(writer, bfsVisitedSet);
+    }
+  
+    System.out.println("\nStarted running DFS Algorithm!");
+    HashSet<Cell> dfsVisitedSet = DFS(start, finish, new HashSet<>());
+    try (FileWriter writer = new FileWriter(q6BfsOutputPath)) {
+      printToFileVisited(writer, dfsVisitedSet);
+    }
+  
+    System.out.println("\nPrinting the Manhattan Distances to Finish!");
+    try (FileWriter writer = new FileWriter(q7ManhattanDistancesOutputPath)) {
+      svgParser.printManhattanToFinish(writer, finish);
+    }
     
-    BFS(start, finish);
-    
-    System.out.println("\nStarted running A* Search Algorithm !");
-    
+    System.out.println("\nStarted running A* Search Manhattan Algorithm !");
     // call A* search on this maze
-    aStarSearch(start, finish);
+    HashSet<Cell> aStarVisitedSet = aStarSearch(start, finish);
+    try (FileWriter writer = new FileWriter(q8AStarManhattanOutputPath)) {
+      printToFileVisited(writer, aStarVisitedSet);
+    }
+  
+    System.out.println("\nStarted running A* Search Euclidean Algorithm !");
+    // call A* search on this maze
+    HashSet<Cell> aStarEuclideanVisitedSet = aStarSearchEuclidean(start, finish);
+    try (FileWriter writer = new FileWriter(q9AStarEuclideanOutputPath)) {
+      printToFileVisited(writer, aStarEuclideanVisitedSet);
+    }
     
     System.out.print("\nPrinting the solution path:");
     ArrayList<Integer[]> solutionPath = printSolution(finish);
     try (FileWriter writer = new FileWriter(q3SolutionOutputPath)) { // Q4
-      printToFileSolution(finish, writer);
+      printToFileSolution(writer, finish);
     }
     try (FileWriter writer = new FileWriter(q4PlotSolutionOutputPath)) {
       svgParser.printMazeWithSolution(writer, solutionPath);
+    }
+  }
+  
+  private static void printToFileVisited(FileWriter writer, HashSet<Cell> visitedSet) throws IOException {
+    for (int row = 0; row < HEIGHT; row++) {
+      for (int col = 0; col < WIDTH; col++) {
+        Cell cellToCompare = new Cell(col, row);
+        if (visitedSet.contains(cellToCompare)) {
+          writer.write("1");
+        } else {
+          writer.write("0");
+        }
+        if (col < WIDTH - 1) {
+          writer.write(",");
+        }
+      }
+      writer.write("\n");
     }
   }
   
@@ -87,7 +131,7 @@ public class MazeSolver {
    * BFS Algorithm
    * This method returns the number of visited cells.
    */
-  public static int BFS(Cell start, Cell finish) {
+  public static HashSet<Cell> BFS(Cell start, Cell finish) {
     
     HashSet<Cell> visited = new HashSet<Cell>();
     LinkedList<Cell> queue = new LinkedList<Cell>();
@@ -112,7 +156,35 @@ public class MazeSolver {
     }
     System.out.println("Number of Expanded Vertices = " + visited.size());
     
-    return visited.size();
+    return visited;
+  }
+  
+  /*
+   * DFS Algorithm
+   * This method returns the number of visited cells.
+   */
+  public static HashSet<Cell> DFS(Cell start, Cell finish, HashSet<Cell> visited) {
+    
+    LinkedList<Cell> stack = new LinkedList<>();
+    
+    stack.push(start);
+    visited.add(start);
+    
+    while (!stack.isEmpty()) {
+      Cell curr = stack.pop();
+      if ((curr.xCoord == finish.xCoord && curr.yCoord == finish.yCoord) || visited.contains(new Cell(finish.xCoord, finish.yCoord))) {
+        return visited;
+      }
+      
+      ArrayList<Cell> neighbors = curr.getNeighbors();
+      for (Cell neighbor : neighbors) {
+        if (!visited.contains(neighbor)) {
+          visited.addAll(DFS(neighbor, finish, visited));
+        }
+      }
+    }
+    
+    return visited;
   }
   
   /*
@@ -121,14 +193,13 @@ public class MazeSolver {
    * It returns the number of total expanded cells for reaching finish cell from start cell.
    *
    */
-  public static int aStarSearch(Cell start, Cell finish) {
-    
-    HashSet<Cell> visited = new HashSet<Cell>();
+  public static HashSet<Cell> aStarSearch(Cell start, Cell finish) {
+    HashSet<Cell> visited = new HashSet<>();
     boolean reachedFinish = false;
     
     // priority queue based on the f value
-    PriorityQueue<Cell> queue = new PriorityQueue<Cell>(WIDTH * HEIGHT, new Comparator<Cell>() {
-      
+    PriorityQueue<Cell> queue = new PriorityQueue<>(WIDTH * HEIGHT, new Comparator<Cell>() {
+  
       public int compare(Cell cell1, Cell cell2) {
         if (cell1.f > cell2.f) {
           return 1;
@@ -138,7 +209,7 @@ public class MazeSolver {
         }
         return 0;
       }
-      
+  
     });
     
     // initialize g cost for the start cell
@@ -193,7 +264,103 @@ public class MazeSolver {
     
     System.out.println("Number of Expanded Vertices = " + visited.size());
     
-    return visited.size();
+    return visited;
+    
+  }
+  
+  /*
+   *
+   * This method represents A* search algorithm.
+   * It returns the number of total expanded cells for reaching finish cell from start cell.
+   *
+   */
+  public static HashSet<Cell> aStarSearchEuclidean(Cell start, Cell finish) {
+    HashSet<Cell> visited = new HashSet<>();
+    boolean reachedFinish = false;
+    
+    // priority queue based on the f value
+    PriorityQueue<Cell> queue = new PriorityQueue<>(WIDTH * HEIGHT, new Comparator<Cell>() {
+      
+      public int compare(Cell cell1, Cell cell2) {
+        if (cell1.f > cell2.f) {
+          return 1;
+        }
+        if (cell1.f < cell2.f) {
+          return -1;
+        }
+        return 0;
+      }
+      
+    });
+    
+    // initialize g cost for the start cell
+    start.g = 0;
+    queue.add(start);
+    
+    while (!queue.isEmpty() && !reachedFinish) {
+      
+      // retrieve cell with the lowest f value
+      Cell current = queue.poll();
+      
+      // to track cells that were expanded
+      visited.add(current);
+      
+      // case when finish cell is dequeued
+      if (current.xCoord == finish.xCoord && current.yCoord == finish.yCoord) {
+        reachedFinish = true;
+      }
+      
+      ArrayList<Cell> neighbors = current.getNeighbors();
+      
+      // consider all the neighbors of the current cell
+      for (Cell adjacentCell : neighbors) {
+        
+        // since one step is needed to move from current cell to its neighbor, increment g value
+//        if (adjacentCell.parent == null) {
+//          adjacentCell.parent = current;
+//        }
+//        int xDiff = adjacentCell.xCoord - adjacentCell.parent.xCoord;
+//        int yDiff = adjacentCell.yCoord - adjacentCell.parent.yCoord;
+//        int x3Diff = start.xCoord - adjacentCell.xCoord;
+//        int y3Diff = start.yCoord - adjacentCell.yCoord;
+//        double gAdditional =  Math.sqrt(xDiff*xDiff + yDiff*yDiff);
+//        double gFromStart =  Math.sqrt(x3Diff*x3Diff + y3Diff*y3Diff);
+        double g = current.g + 1;
+//        double g = current.g + gAdditional;
+//        double g = gFromStart;
+        
+        // Euclidean distance is used to compute h from adjacent cell to the finish cell
+        int x2Diff = adjacentCell.xCoord - finish.xCoord;
+        int y2yDiff = adjacentCell.yCoord - finish.yCoord;
+        
+        double euclidean = Math.sqrt(x2Diff*x2Diff + y2yDiff*y2yDiff);
+        
+        // f = g + h
+        double f = g + euclidean;
+        
+        // if this cell was already expanded then do not add to the queue;
+        // for our maze examples we do not need to worry about cases when there are
+        // multiple paths to the same cell and we could have several f costs for same cell (no loops)
+        if (visited.contains(adjacentCell)) {
+          continue;
+        } else {
+          
+          // set f and g values for adjacent cell
+          adjacentCell.g = g;
+          adjacentCell.f = f;
+          
+          // need this for backtracking purposes
+          adjacentCell.parent = current;
+          
+          // add adjacent cell to the queue so that it's expanded later
+          queue.add(adjacentCell);
+        }
+      }
+    }
+    
+    System.out.println("Number of Expanded Vertices = " + visited.size());
+    
+    return visited;
     
   }
   
@@ -236,7 +403,7 @@ public class MazeSolver {
     return solutionPath;
   }
   
-  public static void printToFileSolution(Cell finish, FileWriter writer) throws IOException {
+  public static void printToFileSolution(FileWriter writer, Cell finish) throws IOException {
     Cell curr = finish;
     Cell prev = finish.parent;
     
