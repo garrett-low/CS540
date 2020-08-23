@@ -410,13 +410,8 @@ public class SVGParser {
     for (int row = 0; row < mazeHeight; row++) {
       for (int col = 0; col < mazeWidth; col++) { // check top of entire row
         boolean isSolutionPath = false;
-        for (Integer[] solutionCoordinates : solutionPath) {
-          if (solutionCoordinates[1] == row && solutionCoordinates[0] == col) {
-            isSolutionPath = true;
-            break;
-          }
-        }
-        
+        isSolutionPath = isSolutionPath(solutionPath, row, col, isSolutionPath);
+  
         writer.write("+"); // each cell begins with a +
         // check top
         if (isSolutionPath) {
@@ -435,13 +430,8 @@ public class SVGParser {
       
       for (int col = 0; col < mazeWidth; col++) { // check left and right (middle of row)
         boolean isSolutionPath = false;
-        for (Integer[] solutionCoordinates : solutionPath) {
-          if (solutionCoordinates[1] == row && solutionCoordinates[0] == col) {
-            isSolutionPath = true;
-            break;
-          }
-        }
-        
+        isSolutionPath = isSolutionPath(solutionPath, row, col, isSolutionPath);
+  
         // check left
         if (svg[row * delta_height + 1 + delta_height / 2][col * delta_width + 1] == 0) { // no wall
           writer.write(" ");
@@ -468,13 +458,8 @@ public class SVGParser {
       if (row == mazeHeight - 1) { // last row
         for (int col = 0; col < mazeWidth; col++) { // check bottom of entire row
           boolean isSolutionPath = false;
-          for (Integer[] solutionCoordinates : solutionPath) {
-            if (solutionCoordinates[1] == row && solutionCoordinates[0] == col) {
-              isSolutionPath = true;
-              break;
-            }
-          }
-          
+          isSolutionPath = isSolutionPath(solutionPath, row, col, isSolutionPath);
+  
           writer.write("+"); // bottom row of each cell begins with a +
           // check bot
           if (isSolutionPath) {
@@ -491,6 +476,16 @@ public class SVGParser {
         }
       }
     }
+  }
+  
+  private boolean isSolutionPath(ArrayList<Integer[]> solutionPath, int row, int col, boolean isSolutionPath) {
+    for (Integer[] solutionCoordinates : solutionPath) {
+      if (solutionCoordinates[1] == row && solutionCoordinates[0] == col) {
+        isSolutionPath = true;
+        break;
+      }
+    }
+    return isSolutionPath;
   }
   
   public void printManhattanToFinish(FileWriter writer, Cell finish) throws IOException {
